@@ -1,6 +1,6 @@
 from django.db import models
 
-from ..users.models import User
+from users.models import User
 
 
 class Recipe(models.Model):
@@ -19,8 +19,8 @@ class Recipe(models.Model):
     text = models.TextField(
         'Текстовое описание',
     )
-    ingredients = models.ManyToManyField()
-    tags = models.ManyToManyField()
+    ingredients = None
+    tags = None
     cooking_time = models.PositiveIntegerField(
         'Время приготовления(в минутах)',
     )

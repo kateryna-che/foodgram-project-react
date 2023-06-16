@@ -1,5 +1,9 @@
-from django.apps import AppConfig
+from django.contrib import admin
+from .models import Recipe
 
 
-class RecipesConfig(AppConfig):
-    name = 'recipes'
+@admin.register(Recipe)
+class RecipeAdmin(admin.ModelAdmin):
+    list_display = ('pk', 'author', 'name')
+    list_filter = ('author', 'name', 'tags')
+    empty_value_display = '-пусто-'
