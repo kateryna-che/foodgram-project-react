@@ -59,13 +59,22 @@ class Recipe(models.Model):
     image = models.ImageField(
         upload_to='recipes/',
         null=True,
-        blank=True
+        blank=True,
+        verbose_name='Изображение'
     )
     text = models.TextField(
         'Текстовое описание',
     )
-    ingredients = models.ManyToManyField(Ingredient, through='IngredientsRecipe')
-    tags = models.ManyToManyField(Tag, through='TagRecipe')
+    ingredients = models.ManyToManyField(
+        Ingredient,
+        through='IngredientsRecipe',
+        verbose_name='Ингридиенты'
+    )
+    tags = models.ManyToManyField(
+        Tag,
+        through='TagRecipe',
+        verbose_name='Теги'
+    )
     cooking_time = models.PositiveIntegerField(
         'Время приготовления(в минутах)',
     )
@@ -80,13 +89,18 @@ class Recipe(models.Model):
 
 
 class IngredientsRecipe(models.Model):
-    ingredients = models.ForeignKey(
-        Ingredient,
-        on_delete=models.CASCADE
-    )
     recipe = models.ForeignKey(
         Recipe,
-        on_delete=models.CASCADE)
+        on_delete=models.CASCADE,
+        related_name='ingredientsrecipe',
+        verbose_name='Рецепт'
+    )
+    ingredient = models.ForeignKey(
+        Ingredient,
+        on_delete=models.CASCADE,
+        related_name='ingredientsrecipe',
+        verbose_name='Ингридиент'
+    )
 
 
 class TagRecipe(models.Model):
@@ -111,9 +125,28 @@ class Favorite(models.Model):
         Recipe,
         on_delete=models.CASCADE,
         related_name='favorite',
-        verbose_name='Автор'
+        verbose_name='Рецепт'
     )
 
     class Meta:
         ordering = ['-id']
         verbose_name = 'Избранное'
+
+
+class ShoppingCart(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='shoppingcart',
+        verbose_name='Пользователь'
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='shoppingcart',
+        verbose_name='Рецепт'
+    )
+
+    class Meta:
+        ordering = ['-id']
+        verbose_name = 'Список покупок'
