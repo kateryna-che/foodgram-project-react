@@ -67,7 +67,7 @@ class Recipe(models.Model):
     )
     ingredients = models.ManyToManyField(
         Ingredient,
-        through='IngredientsRecipe',
+        through='IngredientRecipe',
         verbose_name='Ингридиенты'
     )
     tags = models.ManyToManyField(
@@ -88,7 +88,7 @@ class Recipe(models.Model):
         return self.name
 
 
-class IngredientsRecipe(models.Model):
+class IngredientRecipe(models.Model):
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
@@ -102,6 +102,13 @@ class IngredientsRecipe(models.Model):
         verbose_name='Ингридиент'
     )
 
+    class Meta:
+        verbose_name = 'Ингридиент в рецепте'
+        verbose_name_plural = 'Ингридиенты в рецепте'
+
+    def __str__(self):
+        return f'{self.ingredient.name} в {self.recipe.name}'
+
 
 class TagRecipe(models.Model):
     tag = models.ForeignKey(
@@ -112,6 +119,14 @@ class TagRecipe(models.Model):
         Recipe,
         on_delete=models.CASCADE
     )
+
+    class Meta:
+        ordering = ['-id']
+        verbose_name = 'Тег рецепта'
+        verbose_name_plural = 'Теги рецепта'
+
+    def __str__(self):
+        return f'{self.tag.name} у рецепта {self.recipe.name}'
 
 
 class Favorite(models.Model):
@@ -131,6 +146,10 @@ class Favorite(models.Model):
     class Meta:
         ordering = ['-id']
         verbose_name = 'Избранное'
+        verbose_name_plural = 'Избранное'
+
+    def __str__(self):
+        return f'{self.recipe.name} в избранном у {self.user.username}'
 
 
 class ShoppingCart(models.Model):
@@ -150,3 +169,7 @@ class ShoppingCart(models.Model):
     class Meta:
         ordering = ['-id']
         verbose_name = 'Список покупок'
+        verbose_name_plural = 'Списки покупок'
+
+    def __str__(self):
+        return f'{self.recipe.name} в списке покупок у {self.user.username}'
