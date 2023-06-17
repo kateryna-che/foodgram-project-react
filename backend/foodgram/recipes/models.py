@@ -3,6 +3,24 @@ from django.db import models
 from users.models import User
 
 
+class Ingredient(models.Model):
+    name = models.CharField(
+        'Название',
+        max_length=200
+    )
+    measurement_unit = models.CharField(
+        'Единицы измерения',
+        max_length=200
+    )
+
+    class Meta:
+        verbose_name = 'Ингридиент'
+        verbose_name_plural = 'Ингридиенты'
+
+    def __str__(self):
+        return self.name
+
+
 class Tag(models.Model):
     name = models.CharField(
         'Название',
@@ -17,6 +35,11 @@ class Tag(models.Model):
         max_length=200,
         unique=True
     )
+
+    class Meta:
+        ordering = ['-id']
+        verbose_name = 'Тег'
+        verbose_name_plural = 'Теги'
 
     def __str__(self):
         return self.name
@@ -41,8 +64,46 @@ class Recipe(models.Model):
     text = models.TextField(
         'Текстовое описание',
     )
-    ingredients = None
+    ingredients = models.ManyToManyField(Ingredient, through='IngredientsRecipe')
     tags = None
     cooking_time = models.PositiveIntegerField(
         'Время приготовления(в минутах)',
     )
+
+    class Meta:
+        ordering = ['-id']
+        verbose_name = 'Рецепт'
+        verbose_name_plural = 'Рецепты'
+
+    def __str__(self):
+        return self.name
+
+
+class IngredientsRecipe(models.Model):
+    ingredients = models.ForeignKey(
+        Ingredient,
+        on_delete=models.CASCADE
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE
+    )
+
+
+class Favorite(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='favorites',
+        verbose_name='Пользователь'
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='favorite',
+        verbose_name='Автор'
+    )
+
+    class Meta:
+        ordering = ['-id']
+        verbose_name = 'Избранное'
