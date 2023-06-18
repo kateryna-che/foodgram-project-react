@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.core.validators import MinValueValidator
 from users.models import User
 
 
@@ -77,6 +77,11 @@ class Recipe(models.Model):
     )
     cooking_time = models.PositiveIntegerField(
         'Время приготовления(в минутах)',
+        validators=[
+            MinValueValidator(
+                1, 'Время приготовления не может быть меньше минуты'
+            )
+        ]
     )
 
     class Meta:
