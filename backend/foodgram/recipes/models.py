@@ -1,5 +1,6 @@
-from django.db import models
 from django.core.validators import MinValueValidator
+from django.db import models
+
 from users.models import User
 
 
@@ -49,7 +50,7 @@ class Recipe(models.Model):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='posts',
+        related_name='recipes',
         verbose_name='Автор'
     )
     name = models.CharField(
@@ -97,22 +98,28 @@ class IngredientRecipe(models.Model):
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        related_name='ingredientsrecipe',
+        related_name='ingredients_recipe',
         verbose_name='Рецепт'
     )
     ingredient = models.ForeignKey(
         Ingredient,
         on_delete=models.CASCADE,
-        related_name='ingredientsrecipe',
+        related_name='ingredients_recipe',
         verbose_name='Ингридиент'
+    )
+
+    amount = models.IntegerField(
+        'Количество',
+        validators=[
+            MinValueValidator(
+                1, 'Количество ингредиентов не может быть меньше 1'
+            )
+        ]
     )
 
     class Meta:
         verbose_name = 'Ингридиент в рецепте'
         verbose_name_plural = 'Ингридиенты в рецепте'
-
-    def __str__(self):
-        return f'{self.ingredient.name} в {self.recipe.name}'
 
 
 class TagRecipe(models.Model):
@@ -166,13 +173,13 @@ class ShoppingCart(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='shoppingcart',
+        related_name='shopping_cart_user',
         verbose_name='Пользователь'
     )
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        related_name='shoppingcart',
+        related_name='shopping_cart_recipe',
         verbose_name='Рецепт'
     )
 
