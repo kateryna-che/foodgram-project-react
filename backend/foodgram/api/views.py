@@ -3,6 +3,7 @@ from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -20,7 +21,7 @@ from .serializers import (IngredientSerializer, RecipeCreateSerializer,
 
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
-    pagination_class = RecipesPagination
+    pagination_class = CustomPagination
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
     permission_classes = [IsAuthorOrReadOnly, ]
@@ -36,7 +37,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         serializer.save(author=self.request.user)
 
-    @action(detail=True, methods=['post', 'delete'], url_path='favorite')
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated, ], url_path='favorite')
     def add_to_favorite(self, request, pk=None):
         recipe = self.get_object()
 
@@ -57,7 +58,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             except Favorite.DoesNotExist:
                 return Response({'detail': 'Рецепт не найден в избранном'}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=['post', 'delete'], url_path='shopping_cart')
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated, ], url_path='shopping_cart')
     def add_to_shopping_cart(self, request, pk=None):
         recipe = self.get_object()
 
@@ -78,13 +79,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
             except ShoppingCart.DoesNotExist:
                 return Response({'detail': 'Рецепт не найден в списке покупок'}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['get'], url_path='download_shopping_cart')
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated, ], url_path='download_shopping_cart')
     def download_shopping_cart(self, request):
         user = request.user
-        shopping_cart_recipes = Recipe.objects.filter(shopping_cart_recipe__user=user)
+        shopping_cart_recipes = Recipe.objects.filter(shopping_cart__user=user)
         ingredients_summary = {}
         for recipe in shopping_cart_recipes:
-            ingredient_recipes = recipe.ingredientsrecipe.all()
+            ingredient_recipes = recipe.ingredients_recipe.all()
             for ingredient_recipe in ingredient_recipes:
                 ingredient = ingredient_recipe.ingredient
                 ingredient_key = (ingredient.name, ingredient.measurement_unit)
@@ -142,7 +143,8 @@ class SubscribeView(APIView):
     serializer_class = SubscribeSerializer
 
     def post(self, request, id, *args, **kwargs):
-        data = {'user': request.user.id, 'author': id}
+        author = get_object_or_404(User, id=id)
+        data = {'user': request.user.id, 'author': author}
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -159,4 +161,5 @@ class SubscribeView(APIView):
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
-    filter_class = IngredientFilter
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = IngredientFilter
