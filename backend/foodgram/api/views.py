@@ -11,7 +11,7 @@ from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
 from users.models import Subscription, User
 
 from .filters import IngredientFilter, RecipeFilter
-from .pagination import CustomPagination, RecipesPagination
+from .pagination import CustomPagination
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (IngredientSerializer, RecipeCreateSerializer,
                           RecipeGetSerializer, SmallRecipeSerializer,
