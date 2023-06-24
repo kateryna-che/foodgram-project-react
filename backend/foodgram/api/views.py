@@ -14,7 +14,8 @@ from .pagination import CustomPagination
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (FavoriteCreateSerializer, IngredientSerializer,
                           RecipeCreateSerializer, RecipeGetSerializer,
-                          ShoppingCartCreateSerializer, SubscribeListSerializer,
+                          ShoppingCartCreateSerializer,
+                          SubscribeListSerializer,
                           SubscribeSerializer, TagSerializer)
 from recipes.models import (Favorite, Ingredient, IngredientRecipe, Recipe,
                             ShoppingCart, Tag)
@@ -33,16 +34,20 @@ class RecipeViewSet(viewsets.ModelViewSet):
         if self.request.user.is_authenticated:
             queryset = queryset.annotate(
                 is_favorited=Exists(
-                    Favorite.objects.filter(recipe=OuterRef('pk'), user=self.request.user)
+                    Favorite.objects.filter(recipe=OuterRef('pk'),
+                                            user=self.request.user)
                 ),
                 is_in_shopping_cart=Exists(
-                    ShoppingCart.objects.filter(recipe=OuterRef('pk'), user=self.request.user)
+                    ShoppingCart.objects.filter(recipe=OuterRef('pk'),
+                                                user=self.request.user)
                 )
             )
         else:
             queryset = queryset.annotate(
-                is_favorited=models.Value(False, output_field=models.BooleanField()),
-                is_in_shopping_cart=models.Value(False, output_field=models.BooleanField())
+                is_favorited=models.Value(False,
+                                          output_field=models.BooleanField()),
+                is_in_shopping_cart=models.Value(False,
+                                                 output_field=models.BooleanField())
             )
         return queryset
 
@@ -67,7 +72,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
         get_object_or_404(model, user=request.user, recipe=recipe_pk).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, ], url_path='favorite')
+    @action(detail=True, methods=['post'],
+            permission_classes=[IsAuthenticated, ],
+            url_path='favorite')
     def add_to_favorite(self, request, pk=None):
         recipe = self.get_object()
         serializer = FavoriteCreateSerializer
@@ -78,7 +85,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
         recipe = self.get_object()
         return self.delete_relation(Favorite, recipe.pk, request)
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, ], url_path='shopping_cart')
+    @action(detail=True, methods=['post'],
+            permission_classes=[IsAuthenticated, ],
+            url_path='shopping_cart')
     def add_to_shopping_cart(self, request, pk=None):
         recipe = self.get_object()
         serializer = ShoppingCartCreateSerializer
@@ -98,14 +107,22 @@ class RecipeViewSet(viewsets.ModelViewSet):
             measurement_unit = ingredient['measurement_unit']
             content += f"{ingredient_name} - {amount} {measurement_unit}\n"
         response = HttpResponse(content, content_type='text/plain')
-        response['Content-Disposition'] = 'attachment; filename="shopping_list.txt"'
+        response['Content-Disposition'] = (
+            'attachment; filename="shopping_list.txt"'
+        )
         return response
 
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated, ], url_path='download_shopping_cart')
+    @action(detail=False, methods=['get'],
+            permission_classes=[IsAuthenticated, ],
+            url_path='download_shopping_cart')
     def download_shopping_cart(self, request):
         user = request.user
-        shopping_cart_recipes = ShoppingCart.objects.filter(user=user).values('recipe')
-        ingredient_summary = IngredientRecipe.objects.filter(recipe__in=shopping_cart_recipes).values(
+        shopping_cart_recipes = ShoppingCart.objects.filter(
+            user=user
+        ).values('recipe')
+        ingredient_summary = IngredientRecipe.objects.filter(
+            recipe__in=shopping_cart_recipes
+        ).values(
             ingredient_name=F('ingredient__name'),
             measurement_unit=F('ingredient__measurement_unit')
         ).annotate(amount=Sum('amount')).order_by('ingredient_name')
@@ -143,13 +160,15 @@ class SubscribeView(APIView):
     def post(self, request, id, *args, **kwargs):
         author = get_object_or_404(User, id=id)
         data = {'user': request.user.id, 'author': author}
-        serializer = self.serializer_class(data=data, context={'request': request})
+        serializer = self.serializer_class(data=data,
+                                           context={'request': request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def delete(self, request, id, *args, **kwargs):
-        get_object_or_404(Subscription, user=request.user, author__id=id).delete()
+        get_object_or_404(Subscription, user=request.user,
+                          author__id=id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

@@ -22,9 +22,14 @@ class Command(BaseCommand):
                 name, measurement_unit = row[:2]
                 ingredients = Ingredient.objects.filter(name=name)
                 if ingredients.exists():
-                    print(f'Ингредиент "{name}" уже существует. Создание пропущено.')
+                    print(
+                        f'Ингредиент "{name}" уже существует. Создание пропущено.'
+                    )
                 else:
-                    Ingredient.objects.create(name=name, measurement_unit=measurement_unit)
+                    Ingredient.objects.create(name=name,
+                                              measurement_unit=measurement_unit)
                     print(f'Создан ингредиент "{name}".')
 
-        self.stdout.write(self.style.SUCCESS('Данные успешно загружены в базу данных.'))
+        self.stdout.write(self.style.SUCCESS(
+            'Данные успешно загружены в базу данных.'
+        ))

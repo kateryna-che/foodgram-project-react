@@ -13,8 +13,10 @@ router.register(r'ingredients', IngredientViewSet, basename='ingredient')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('users/subscriptions/', SubscriptionsListView.as_view(), name='subscriptions'),
-    path('users/<int:id>/subscribe/', SubscribeView.as_view(), name='subscribe'),
+    path('users/subscriptions/', SubscriptionsListView.as_view(),
+         name='subscriptions'),
+    path('users/<int:id>/subscribe/', SubscribeView.as_view(),
+         name='subscribe'),
     path('', include('djoser.urls')),
     path('auth/', include('djoser.urls.authtoken')),
 ]
