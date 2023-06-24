@@ -8,9 +8,10 @@ from recipes.models import Ingredient
 class Command(BaseCommand):
     help = 'Загружает данные об ингредиентах из CSV-файла в базу данных'
 
+    # используя двойные обратные слеши \\
     def add_arguments(self, parser):
         parser.add_argument('csv_file', type=str,
-                            help='Абсолютный путь к CSV-файлу')  # используя двойные обратные слеши \\
+                            help='Абсолютный путь к CSV-файлу')
 
     def handle(self, *args, **options):
         csv_file = options['csv_file']
@@ -22,12 +23,12 @@ class Command(BaseCommand):
                 name, measurement_unit = row[:2]
                 ingredients = Ingredient.objects.filter(name=name)
                 if ingredients.exists():
-                    print(
-                        f'Ингредиент "{name}" уже существует. Создание пропущено.'
-                    )
+                    print(f'Ингредиент "{name}" уже существует.'
+                          f'Создание пропущено.')
                 else:
-                    Ingredient.objects.create(name=name,
-                                              measurement_unit=measurement_unit)
+                    Ingredient.objects.create(
+                        name=name, measurement_unit=measurement_unit
+                    )
                     print(f'Создан ингредиент "{name}".')
 
         self.stdout.write(self.style.SUCCESS(
