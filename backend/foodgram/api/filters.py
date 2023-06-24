@@ -1,14 +1,11 @@
 from django_filters import rest_framework as filters
 
-from recipes.models import Ingredient, Recipe, Tag
+from recipes.models import Ingredient, Recipe
 
 
 class RecipeFilter(filters.FilterSet):
-    tags = filters.ModelMultipleChoiceFilter(
+    tags = filters.AllValuesMultipleFilter(
         field_name='tags__slug',
-        to_field_name='slug',
-        queryset=Tag.objects.all(),
-        conjoined=False,
     )
 
     is_favorited = filters.BooleanFilter(
@@ -29,7 +26,7 @@ class RecipeFilter(filters.FilterSet):
 
     def get_is_in_shopping_cart(self, queryset, name, value):
         if self.request and self.request.user.is_authenticated and value:
-            return queryset.filter(shopping_cart__user=self.request.user)
+            return queryset.filter(shoppingcarts__user=self.request.user)
         return queryset
 
 
