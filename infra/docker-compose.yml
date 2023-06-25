@@ -1,6 +1,5 @@
 version: '3.3'
 services:
-
   frontend:
     build:
       context: ../frontend
@@ -13,5 +12,8 @@ services:
       - "80:80"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - /C/Dev/foodgram-project-react/backend/foodgram/media:/media
       - ../frontend/build:/usr/share/nginx/html/
       - ../docs/:/usr/share/nginx/html/api/docs/
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
