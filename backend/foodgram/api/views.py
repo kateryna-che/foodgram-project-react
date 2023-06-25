@@ -102,12 +102,12 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     @staticmethod
     def generate_shopping_list(queryset):
-        content = "Список покупок:\n\n"
+        content = 'Список покупок:\n\n'
         for ingredient in queryset:
             ingredient_name = ingredient['ingredient_name']
             amount = ingredient['amount']
             measurement_unit = ingredient['measurement_unit']
-            content += f"{ingredient_name} - {amount} {measurement_unit}\n"
+            content += f'{ingredient_name} - {amount} {measurement_unit}\n'
         response = HttpResponse(content, content_type='text/plain')
         response['Content-Disposition'] = (
             'attachment; filename="shopping_list.txt"'
@@ -119,11 +119,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
             url_path='download_shopping_cart')
     def download_shopping_cart(self, request):
         user = request.user
-        shopping_cart_recipes = ShoppingCart.objects.filter(
-            user=user
-        ).values('recipe')
         ingredient_summary = IngredientRecipe.objects.filter(
-            recipe__in=shopping_cart_recipes
+            recipe__shopping_cart__user=user
         ).values(
             ingredient_name=F('ingredient__name'),
             measurement_unit=F('ingredient__measurement_unit')

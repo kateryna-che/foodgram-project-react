@@ -19,17 +19,15 @@ class Command(BaseCommand):
         with open(csv_file, 'r', encoding='utf-8') as file:
             reader = csv.reader(file)
             next(reader)
-            for row in reader:
-                name, measurement_unit = row[:2]
-                ingredients = Ingredient.objects.filter(name=name)
-                if ingredients.exists():
-                    print(f'Ингредиент "{name}" уже существует.'
-                          f'Создание пропущено.')
-                else:
-                    Ingredient.objects.create(
-                        name=name, measurement_unit=measurement_unit
-                    )
+            for name, measurement_unit in reader:
+                ingredient, created = Ingredient.objects.get_or_create(
+                    name=name, measurement_unit=measurement_unit
+                )
+                if created:
                     print(f'Создан ингредиент "{name}".')
+                else:
+                    print(f'Ингредиент "{name}" уже существует.'
+                          'Создание пропущено.')
 
         self.stdout.write(self.style.SUCCESS(
             'Данные успешно загружены в базу данных.'

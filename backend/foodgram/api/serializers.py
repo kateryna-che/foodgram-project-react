@@ -1,17 +1,17 @@
 from django.db import transaction
-from djoser.serializers import UserSerializer as BaseUserSerializer
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 
 from recipes.models import (Favorite, Ingredient, IngredientRecipe, Recipe,
                             ShoppingCart, Tag)
 from users.models import Subscription, User
 
 
-class UserGetSerializer(BaseUserSerializer):
+class UserGetSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField()
 
-    class Meta(BaseUserSerializer.Meta):
+    class Meta:
         model = User
         fields = ('email', 'id', 'username', 'first_name',
                   'last_name', 'is_subscribed')
@@ -19,8 +19,7 @@ class UserGetSerializer(BaseUserSerializer):
     def get_is_subscribed(self, obj):
         request = self.context.get('request')
         return (request and request.user.is_authenticated
-                and Subscription.objects.filter(user=request.user,
-                                                author=obj).exists())
+                and obj.following.filter(user=request.user).exists())
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -122,9 +121,11 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
     @staticmethod
     def create_ingredients(recipe, ingredients):
         ingredient_instances = [
-            IngredientRecipe(recipe=recipe, ingredient_id=ingredient['id'],
-                             amount=ingredient['amount'])
-            for ingredient in ingredients
+            IngredientRecipe(
+                recipe=recipe,
+                ingredient_id=ingredient['id'],
+                amount=ingredient['amount']
+            ) for ingredient in ingredients
         ]
         IngredientRecipe.objects.bulk_create(ingredient_instances)
 
@@ -143,9 +144,8 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         ingredients = validated_data.pop('ingredients_recipe')
         instance.tags.set(tags)
         IngredientRecipe.objects.filter(recipe=instance).delete()
-        instance = super().update(instance, validated_data)
         self.create_ingredients(instance, ingredients)
-        return instance
+        return super().update(instance, validated_data)
 
     def to_representation(self, instance):
         return RecipeGetSerializer(instance, context=self.context).data
@@ -185,43 +185,54 @@ class SubscribeSerializer(serializers.ModelSerializer):
 
 class SubscribeListSerializer(UserGetSerializer):
     recipes = serializers.SerializerMethodField()
-    recipes_count = serializers.SerializerMethodField()
+    recipes_count = serializers.IntegerField(source='recipes.count')
 
     class Meta(UserGetSerializer.Meta):
         fields = ('email', 'id', 'username', 'first_name', 'last_name',
                   'is_subscribed', 'recipes', 'recipes_count')
 
     def get_recipes(self, obj):
-        recipes_limit = self.context.get('recipes_limit', None)
+        recipes_limit = self.context.get('recipes_limit', 3)
         queryset = obj.recipes.all()
         if recipes_limit is not None:
             queryset = queryset[:recipes_limit]
-        serializer = RecipeGetSerializer(queryset, many=True,
-                                         context=self.context)
-        return serializer.data
+        return RecipeGetSerializer(
+            queryset,
+            many=True,
+            context=self.context
+        ).data
 
-    def get_recipes_count(self, obj):
-        return obj.recipes.count()
 
+class BaseRelationshipCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        fields = '__all__'
 
-class BaseRelationshipCreateSerializer(serializers.Serializer):
-    recipe = serializers.PrimaryKeyRelatedField(queryset=Recipe.objects.all())
-
-    def create(self, validated_data):
-        request = self.context.get('request')
-        if not request or not request.user.is_authenticated:
-            raise serializers.ValidationError(
-                'Текущий пользователь не найден.'
-            )
-        user = request.user
-        return self.Meta.model.objects.create(user=user, **validated_data)
+    def to_representation(self, instance):
+        return SmallRecipeSerializer(
+            instance.recipe,
+            context=self.context
+        ).data
 
 
 class FavoriteCreateSerializer(BaseRelationshipCreateSerializer):
-    class Meta:
+    class Meta(BaseRelationshipCreateSerializer.Meta):
         model = Favorite
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Favorite.objects.all(),
+                fields=('user', 'recipe'),
+                message='Рецепт уже в избранном'
+            )
+        ]
 
 
 class ShoppingCartCreateSerializer(BaseRelationshipCreateSerializer):
-    class Meta:
+    class Meta(BaseRelationshipCreateSerializer.Meta):
         model = ShoppingCart
+        validators = [
+            UniqueTogetherValidator(
+                queryset=ShoppingCart.objects.all(),
+                fields=('user', 'recipe'),
+                message='Рецепт уже в списке покупок'
+            )
+        ]

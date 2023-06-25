@@ -2,7 +2,6 @@ from django.contrib import admin
 from django.contrib.auth.models import Group
 
 from recipes.models import Recipe
-
 from .models import Subscription, User
 
 
@@ -12,14 +11,13 @@ class UserAdmin(admin.ModelAdmin):
     list_filter = ('email', 'username',)
     empty_value_display = '-пусто-'
 
+    @admin.display(description='Количество рецептов')
     def recipe_count(self, obj):
-        return Recipe.objects.filter(author=obj).count()
+        return obj.recipes.count()
 
+    @admin.display(description='Количество подписчиков')
     def follower_count(self, obj):
-        return Subscription.objects.filter(author=obj).count()
-
-    recipe_count.short_description = 'Количество рецептов'
-    follower_count.short_description = 'Количество подписчиков'
+        return obj.following.count()
 
 
 admin.site.register(Subscription)

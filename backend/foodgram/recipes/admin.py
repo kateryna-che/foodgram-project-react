@@ -7,20 +7,9 @@ from .models import (Favorite, Ingredient, IngredientRecipe, Recipe,
                      ShoppingCart, Tag, TagRecipe)
 
 
-class IngredientRecipeInlineFormSet(BaseInlineFormSet):
-    def clean(self):
-        super().clean()
-        ingredients_count = sum(1 for form in self.forms if form.cleaned_data
-                                and not form.cleaned_data.get('DELETE'))
-        if ingredients_count < 1:
-            raise ValidationError(
-                'Колличество ингредиентов должно быть больше 1.'
-            )
-
-
 class IngredientRecipeInline(admin.TabularInline):
     model = IngredientRecipe
-    formset = IngredientRecipeInlineFormSet
+    min_num = 1
 
 
 @admin.register(Recipe)
@@ -31,15 +20,19 @@ class RecipeAdmin(admin.ModelAdmin):
     empty_value_display = '-пусто-'
     inlines = [IngredientRecipeInline]
 
+    @admin.display(description='Добавлен в избранное')
     def in_favorite(self, obj):
         return obj.favorites.count()
 
+    @admin.display(description='Ингредиенты')
     def display_ingredients(self, obj):
         return ', '.join(obj.ingredients.values_list('name', flat=True))
 
+    @admin.display(description='Теги')
     def display_tags(self, obj):
         return ', '.join(obj.tags.values_list('name', flat=True))
 
+    @admin.display(description='Изображение')
     def display_image(self, obj):
         if obj.image:
             return mark_safe(
@@ -47,11 +40,6 @@ class RecipeAdmin(admin.ModelAdmin):
             )
         else:
             return 'No Image'
-
-    in_favorite.short_description = 'Добавлен в избранное'
-    display_ingredients.short_description = 'Ингредиенты'
-    display_tags.short_description = 'Теги'
-    display_image.short_description = 'Изображение'
 
 
 @admin.register(Ingredient)

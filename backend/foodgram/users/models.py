@@ -1,13 +1,13 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from .constants import MAX_LENGTH
+from .constants import EMAIL_MAX_LENGTH, MAX_LENGTH
 
 
 class User(AbstractUser):
     email = models.EmailField(
         'Электронная почта',
-        max_length=254,
+        max_length=EMAIL_MAX_LENGTH,
         unique=True
     )
     username = models.CharField(
@@ -29,10 +29,10 @@ class User(AbstractUser):
     )
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
+    REQUIRED_FIELDS = ('username', 'first_name', 'last_name')
 
     class Meta:
-        ordering = ['-username']
+        ordering = ('-username',)
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
 
@@ -56,13 +56,13 @@ class Subscription(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(
-            fields=['user', 'author'],
+            fields=('user', 'author'),
             name='unique_user_author',
         ),
             models.CheckConstraint(
                 name="%(app_label)s_%(class)s_prevent_self_follow",
                 check=~models.Q(user=models.F("author")),
-        )
+            )
         ]
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
