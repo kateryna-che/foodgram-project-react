@@ -55,10 +55,11 @@ class Subscription(models.Model):
     )
 
     class Meta:
-        constraints = [models.UniqueConstraint(
-            fields=('user', 'author'),
-            name='unique_user_author',
-        ),
+        constraints = [
+            models.UniqueConstraint(
+                fields=('user', 'author'),
+                name='unique_user_author',
+            ),
             models.CheckConstraint(
                 name="%(app_label)s_%(class)s_prevent_self_follow",
                 check=~models.Q(user=models.F("author")),
