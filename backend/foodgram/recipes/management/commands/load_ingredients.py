@@ -25,6 +25,9 @@ class Command(BaseCommand):
                 if created:
                     print(f'Создан ингредиент "{name}".')
                 else:
-                    print(f'Ингредиент "{name}" уже существует. Создание пропущено.')
+                    print(f'Ингредиент "{name}" уже существует. '
+                          'Создание пропущено.')
 
-        self.stdout.write(self.style.SUCCESS('Данные успешно загружены в базу данных.'))
+        self.stdout.write(self.style.SUCCESS(
+            'Данные успешно загружены в базу данных.'
+        ))
