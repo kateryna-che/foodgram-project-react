@@ -86,6 +86,3 @@ sudo docker-compose exec web python manage.py createsuperuser
 sudo docker-compose exec web python manage.py collectstatic --no-input
 sudo docker-compose exec web python manage.py load_ingredients
 ```
-
-### Документация к API проекта
-Доступна по адресу http://0.0.0.0/api/docs/ после запуска проекта.
