@@ -14,7 +14,6 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split()
 
 AUTH_USER_MODEL = 'users.User'
 
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -132,8 +131,7 @@ USE_I18N = True
 USE_L10N = True
 
 STATIC_URL = '/static/'
-
-STATICFILES_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

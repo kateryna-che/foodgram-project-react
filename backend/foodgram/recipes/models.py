@@ -4,7 +4,7 @@ from django.db import models
 
 from users.models import User
 
-from .constants import COLOR_MAX_LENGTH, MAX_LENGTH
+from .constants import COLOR_MAX_LENGTH, MAX_LENGTH, MAX_VALUE, MIN_VALUE
 
 
 class Ingredient(models.Model):
@@ -84,11 +84,11 @@ class Recipe(models.Model):
         'Время приготовления (в минутах)',
         validators=[
             MinValueValidator(
-                1,
+                MIN_VALUE,
                 'Время приготовления не может быть меньше минуты'
             ),
             MaxValueValidator(
-                6000,
+                MAX_VALUE,
                 'Время приготовления не может превышать 6000 минут'
             ),
         ]
@@ -123,11 +123,11 @@ class IngredientRecipe(models.Model):
         verbose_name='Количество',
         validators=[
             MinValueValidator(
-                1,
+                MIN_VALUE,
                 message='Количество ингредиентов не может быть меньше 1'
             ),
             MaxValueValidator(
-                32767,
+                MAX_VALUE,
                 message='Количество ингредиентов не может превышать 32767'
             ),
         ]
