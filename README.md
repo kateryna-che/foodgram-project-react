@@ -68,7 +68,7 @@ docker-compose exec web python manage.py load_ingredients
 ```
 
 ### Как запустить проект на удаленном сервере:
-Для работы проекта необходим docker и docker-compose. Скопируйте файлы docker-compose.yaml и nginx/default.conf на сервер.
+Для работы проекта необходим docker и docker-compose. Скопируйте файлы docker-compose.yaml и nginx.conf на сервер.
 
 В репозитории на GitHub необходимо прописать следующие Secrets:
 
