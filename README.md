@@ -86,3 +86,5 @@ sudo docker-compose exec web python manage.py createsuperuser
 sudo docker-compose exec web python manage.py collectstatic --no-input
 sudo docker-compose exec web python manage.py load_ingredients
 ```
+
+Документация проекта доступна по адресу http://0.0.0.0/api/docs/redoc.html
