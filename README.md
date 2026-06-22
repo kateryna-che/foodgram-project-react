@@ -1,88 +1,102 @@
-## FOODGRAM
+# Foodgram Recipe Platform
 
-![Foodgram](https://github.com/kateryna-che/foodgram-project-react/actions/workflows/foodgram-workflow.yml/badge.svg)
+Foodgram is a recipe-sharing web application with a REST API. Users can publish recipes, add recipes to favorites, follow authors, generate shopping lists from selected recipes, and download the shopping list as a text file.
 
-Foodgram - это продуктовый помощник, который предназначен для публикации, редактирования и удаления рецептов. Это онлайн-платформа, где пользователи могут делиться своими любимыми рецептами и находить новые идеи для готовки.
+This repository is kept as a portfolio backend project: it shows a Django REST Framework application packaged with Docker and prepared for deployment behind Nginx and Gunicorn.
 
-Основные функции:
+## Main features
 
-1. Публикация рецептов: Пользователи могут создавать свои рецепты, указывая название, список ингредиентов, пошаговые инструкции и фотографии блюда. Рецепты можно сохранить в личном профиле и делиться ими с другими пользователями.
+- User registration and authentication
+- Recipe creation, editing, and deletion
+- Recipe images and ingredient lists
+- Favorite recipes
+- Author subscriptions
+- Shopping cart based on selected recipes
+- Downloadable shopping list
+- API documentation
+- Docker-based local launch
+- CI/CD workflow with GitHub Actions
 
-2. Редактирование и удаление рецептов: Пользователи имеют возможность отредактировать или удалить свои опубликованные рецепты в любое время. Это позволяет вносить изменения, добавлять новые фотографии или улучшать инструкции по готовке.
+## Tech stack
 
-3. Добавление в избранное: Пользователи могут добавлять понравившиеся рецепты в список избранных. Это позволяет быстро находить и просматривать любимые рецепты в отдельной вкладке без необходимости каждый раз искать их среди всех опубликованных рецептов.
+- Python
+- Django
+- Django REST Framework
+- PostgreSQL
+- Docker
+- Docker Compose
+- Nginx
+- Gunicorn
+- GitHub Actions
 
-4. Список покупок: Foodgram предоставляет возможность создавать список покупок на основе выбранных рецептов. Пользователи могут отмечать необходимые ингредиенты и формировать список покупок для похода в магазин. Кроме того, список покупок можно скачать в формате TXT, чтобы иметь его на мобильном устройстве или распечатать.
+## Local setup
 
-5.Подписка на авторов: Пользователи могут подписываться на авторов рецептов, чтобы получать уведомления о новых рецептах и быть в курсе последних обновлений. Это позволяет пользователям следить за активностью своих любимых авторов и получать новые идеи для приготовления блюд.
+Clone the repository:
 
-Foodgram обеспечивает удобство и функциональность для любителей готовить и находить вдохновение в кулинарии. Он объединяет сообщество людей, которые разделяют свои рецепты и находятся в постоянном поиске новых вкусных идей. Благодаря возможности сохранения избранных рецептов и создания списков покупок, FoodGram становится незаменимым помощником при планировании и приготовлении разнообразных блюд.
-
-### Используемые технологии
-Python 
-Django 
-Django REST Framework
-PostgreSQL 
-Nginx 
-Gunicorn 
-Docker 
-Docker-compose 
-
-### Как запустить проект локально:
-
-Клонировать репозиторий и перейти в него в командной строке:
-```
+```bash
 git clone git@github.com:kateryna-che/foodgram-project-react.git
 cd foodgram-project-react
 ```
 
-Cоздать файл .env с переменными окружения:
+Create an environment file:
 
-```
+```bash
 cd infra
 touch .env
 ```
-```
-DJANGO_KEY='your Django secret key'
-DB_ENGINE=django.db.backends.postgresql # указываем, что работаем с postgresql
-DB_NAME=postgres # имя базы данных
-POSTGRES_USER=postgres # логин для подключения к базе данных
-POSTGRES_PASSWORD=postgres # пароль для подключения к БД (установите свой)
-DB_HOST=db # название сервиса (контейнера)
-DB_PORT=5432 # порт для подключения к БД
-```
-Из папки infra/ развернуть контейнеры:
 
+Example `.env` file:
+
+```env
+DJANGO_KEY=your-django-secret-key
+DB_ENGINE=django.db.backends.postgresql
+DB_NAME=postgres
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+DB_HOST=db
+DB_PORT=5432
 ```
+
+Start the containers from the `infra/` directory:
+
+```bash
 docker-compose up -d
 ```
-Запуск миграций, создание суперюзера, сбор статики и заполнение БД(ингредиентов):
 
-```
+Run migrations, create a superuser, collect static files, and load ingredients:
+
+```bash
 docker-compose exec web python manage.py migrate
 docker-compose exec web python manage.py createsuperuser
-docker-compose exec web python manage.py collectstatic --no-input 
+docker-compose exec web python manage.py collectstatic --no-input
 docker-compose exec web python manage.py load_ingredients
 ```
 
-### Как запустить проект на удаленном сервере:
-Для работы проекта необходим docker и docker-compose. Скопируйте файлы docker-compose.yaml и nginx.conf на сервер.
+## Deployment notes
 
-В репозитории на GitHub необходимо прописать следующие Secrets:
+The project is prepared for deployment with Docker Compose, Nginx, Gunicorn, PostgreSQL, and GitHub Actions.
 
- - DOCKER_PASSWORD, DOCKER_USERNAME - для подключению к DockerHub
- - USER, HOST, PASSPHRASE, SSH_KEY - для подключения к удаленному серверу
- - TELEGRAM_TO, TELEGRAM_TOKEN - для отправки уведомлений в Telegram
- - DB_ENGIN, DB_NAME, POSTGRES_USER, POSTGRES_PASSWORD,  DB_HOST, DB_PORT - для использования базы данных Postgres
+Required GitHub Actions secrets for deployment:
 
-При пуше в ветку master будет запущена проверка на соответствие кода стандартам PEP8, загрузка образа на DockerHub и деплой на сервер. При успешном завершении пришлет уведомление в Telegram.
-
-Далее на сервере следует выполнить миграции, создать суперюзера, собрать статику и заполнить БД:
+```text
+DOCKER_USERNAME
+DOCKER_PASSWORD
+USER
+HOST
+PASSPHRASE
+SSH_KEY
+TELEGRAM_TO
+TELEGRAM_TOKEN
+DB_ENGINE
+DB_NAME
+POSTGRES_USER
+POSTGRES_PASSWORD
+DB_HOST
+DB_PORT
 ```
-sudo docker-compose exec web python manage.py migrate
-sudo docker-compose exec web python manage.py createsuperuser
-sudo docker-compose exec web python manage.py collectstatic --no-input
-sudo docker-compose exec web python manage.py load_ingredients
-```
 
-Документация проекта доступна по адресу http://0.0.0.0/api/docs/redoc.html
+On push to the main deployment branch, the workflow can run code checks, build and publish Docker images, deploy the project, and send a Telegram notification.
+
+## Project status
+
+Portfolio project. Demo deployment is not currently maintained.
