@@ -6,11 +6,13 @@ load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-SECRET_KEY = os.getenv('DJANGO_KEY', 'some_key')
+SECRET_KEY = os.getenv('DJANGO_KEY')
 
-DEBUG = os.getenv('DEBUG', False)
+# os.getenv returns a string, and any non-empty string such as "False"
+# is truthy, so the value is compared explicitly.
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split()
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost 127.0.0.1').split()
 
 AUTH_USER_MODEL = 'users.User'
 
