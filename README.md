@@ -28,6 +28,7 @@ This repository is kept as a portfolio backend project: it shows a Django REST F
 - Nginx
 - Gunicorn
 - GitHub Actions
+- pytest, pytest-django
 
 ## Local setup
 
@@ -49,6 +50,8 @@ Example `.env` file:
 
 ```env
 DJANGO_KEY=your-django-secret-key
+DEBUG=False
+ALLOWED_HOSTS=localhost 127.0.0.1
 DB_ENGINE=django.db.backends.postgresql
 DB_NAME=postgres
 POSTGRES_USER=postgres
@@ -72,6 +75,30 @@ docker-compose exec web python manage.py collectstatic --no-input
 docker-compose exec web python manage.py load_ingredients
 ```
 
+## Running the tests
+
+The API is covered by tests written with pytest, pytest-django and the DRF
+test client: registration and token login, tags and ingredient search,
+creating, editing and deleting recipes with their validation and access
+rules, filters, favorites, the shopping cart and its download, and
+subscriptions.
+
+Install the development requirements and run the tests from
+`backend/foodgram`:
+
+```bash
+pip install -r backend/requirements-dev.txt
+cd backend/foodgram
+pytest
+```
+
+The tests need the same environment variables as the project (see the
+`.env` example above). Set `DATABASES=sqlite` to run them on SQLite instead
+of PostgreSQL.
+
+On every push and pull request GitHub Actions runs flake8, checks that the
+migrations match the models, and runs the tests against PostgreSQL.
+
 ## Deployment notes
 
 The project is prepared for deployment with Docker Compose, Nginx, Gunicorn, PostgreSQL, and GitHub Actions.
@@ -79,6 +106,8 @@ The project is prepared for deployment with Docker Compose, Nginx, Gunicorn, Pos
 Required GitHub Actions secrets for deployment:
 
 ```text
+DJANGO_KEY
+ALLOWED_HOSTS
 DOCKER_USERNAME
 DOCKER_PASSWORD
 USER
@@ -95,7 +124,9 @@ DB_HOST
 DB_PORT
 ```
 
-On push to the main deployment branch, the workflow can run code checks, build and publish Docker images, deploy the project, and send a Telegram notification.
+Building the Docker image, deploying and the Telegram notification run only
+when the workflow is started by hand from the Actions tab (`workflow_dispatch`),
+after the tests pass.
 
 ## Project status
 
