@@ -1,0 +1,3 @@
+# Count only the backend code in the language statistics
+frontend/** linguist-vendored
+docs/** linguist-documentation
