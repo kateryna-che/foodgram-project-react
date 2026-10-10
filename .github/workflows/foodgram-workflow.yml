@@ -217,7 +217,9 @@ jobs:
 
   send_message:
     runs-on: ubuntu-latest
-    needs: deploy
+    needs: [build_and_push_to_docker_hub, deploy]
+    # Reports a failed run on main as well as a successful deploy.
+    if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
     steps:
       - name: send message
         uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1 # v1.1.1
@@ -225,8 +227,9 @@ jobs:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
-            ${{ github.workflow }} успешно выполнен!
+            ${{ github.workflow }}: ${{ needs.deploy.result == 'success' && 'деплой успешно выполнен!' || 'деплой НЕ выполнен.' }}
             Запустил - ${{ github.actor }}.
             Ветка - ${{ github.ref_name }}.
             Образ - foodgram:${{ github.sha }}.
             Ссылка на коммит - https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+            Запуск - https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
