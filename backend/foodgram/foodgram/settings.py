@@ -43,7 +43,10 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
     ],
-    'SEARCH_PARAM': 'name'
+    'SEARCH_PARAM': 'name',
+    # DRF 3.18 returns errors of nested lists (the recipe ingredients) as a
+    # dict keyed by the item index; the frontend expects the old list.
+    'LIST_SERIALIZER_ERRORS_AS_DICT': False,
 }
 
 DJOSER = {
@@ -130,7 +133,8 @@ TIME_ZONE = 'Europe/Moscow'
 
 USE_I18N = True
 
-USE_L10N = True
+# Django 5.0 changed the default to True; keep the previous behaviour.
+USE_TZ = False
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
