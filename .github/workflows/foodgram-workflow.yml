@@ -187,8 +187,12 @@ jobs:
             # The job fails if the new backend does not become healthy.
             sudo docker compose up -d --wait --wait-timeout 120 web
 
-            # Only dangling layers are removed; the tagged release images
-            # stay for a rollback.
+            # The 5 newest images of the backend and the frontend stay for
+            # a rollback; older ones and dangling layers are removed.
+            for image in "$FOODGRAM_IMAGE" "$FRONTEND_IMAGE"; do
+              sudo docker image ls "$image" --format '{{.Repository}}:{{.Tag}}' \
+                | tail -n +6 | xargs -r sudo docker image rm || true
+            done
             sudo docker image prune -f
 
   send_message:
