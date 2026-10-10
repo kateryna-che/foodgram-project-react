@@ -58,7 +58,8 @@ services:
       start_period: 30s
 
   frontend:
-    image: absentkai/frontend:latest
+    # Built from the same commit as the backend image.
+    image: ${FRONTEND_IMAGE:-absentkai/frontend}:${FOODGRAM_TAG:-latest}
     logging: *logging
     volumes:
       - ../frontend/:/app/result_build/

@@ -68,12 +68,13 @@ jobs:
         run: uv run --locked pytest
 
   build_and_push_to_docker_hub:
-    name: Push Docker image to Docker Hub
+    name: Push Docker images to Docker Hub
     runs-on: ubuntu-latest
     needs: tests
     if: github.event_name == 'workflow_dispatch'
     env:
-      IMAGE: ${{ secrets.DOCKER_USERNAME }}/foodgram
+      BACKEND_IMAGE: ${{ secrets.DOCKER_USERNAME }}/foodgram
+      FRONTEND_IMAGE: ${{ secrets.DOCKER_USERNAME }}/frontend
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
@@ -87,14 +88,22 @@ jobs:
       # Every image is tagged with its commit SHA, so the server can be
       # rolled back to any release. latest moves only on main, where the
       # deploys come from.
-      - name: Push to Docker Hub
+      - name: Push the backend image
         uses: docker/build-push-action@v6
         with:
           context: backend
           push: true
           tags: |
-            ${{ env.IMAGE }}:${{ github.sha }}
-            ${{ github.ref == 'refs/heads/main' && format('{0}:latest', env.IMAGE) || '' }}
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}:latest', env.BACKEND_IMAGE) || '' }}
+      - name: Push the frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          push: true
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}:latest', env.FRONTEND_IMAGE) || '' }}
 
   deploy:
     name: Deploy to the server
@@ -137,6 +146,7 @@ jobs:
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_PORT: ${{ secrets.DB_PORT }}
           FOODGRAM_IMAGE: ${{ secrets.DOCKER_USERNAME }}/foodgram
+          FRONTEND_IMAGE: ${{ secrets.DOCKER_USERNAME }}/frontend
           FOODGRAM_TAG: ${{ github.sha }}
         with:
           host: ${{ secrets.HOST }}
@@ -144,7 +154,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
           fingerprint: ${{ secrets.SSH_FINGERPRINT }}
-          envs: DJANGO_KEY,ALLOWED_HOSTS,DB_ENGINE,DB_NAME,POSTGRES_USER,POSTGRES_PASSWORD,DB_HOST,DB_PORT,FOODGRAM_IMAGE,FOODGRAM_TAG
+          envs: DJANGO_KEY,ALLOWED_HOSTS,DB_ENGINE,DB_NAME,POSTGRES_USER,POSTGRES_PASSWORD,DB_HOST,DB_PORT,FOODGRAM_IMAGE,FRONTEND_IMAGE,FOODGRAM_TAG
           script: |
             set -eu
             cd foodgram/infra
@@ -163,6 +173,7 @@ jobs:
               printf "DB_HOST='%s'\n" "$DB_HOST"
               printf "DB_PORT='%s'\n" "$DB_PORT"
               printf "FOODGRAM_IMAGE='%s'\n" "$FOODGRAM_IMAGE"
+              printf "FRONTEND_IMAGE='%s'\n" "$FRONTEND_IMAGE"
               printf "FOODGRAM_TAG='%s'\n" "$FOODGRAM_TAG"
             } > .env
 
