@@ -182,13 +182,13 @@ jobs:
     needs: deploy
     steps:
       - name: send message
-        uses: appleboy/telegram-action@master
+        uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1 # v1.1.1
         with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
-          message: ${{ github.workflow }} успешно выполнен!
-                  Автор коммита - ${{ github.actor }}.
-                  Ветка - ${{ github.ref }}.
-                  Сообщение - "${{ github.event.commits[0].message }}".
-                  Ссылка на коммит -
-                  https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+          message: |
+            ${{ github.workflow }} успешно выполнен!
+            Запустил - ${{ github.actor }}.
+            Ветка - ${{ github.ref_name }}.
+            Образ - foodgram:${{ github.sha }}.
+            Ссылка на коммит - https://github.com/${{ github.repository }}/commit/${{ github.sha }}
