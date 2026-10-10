@@ -50,7 +50,13 @@ const SingleCard = ({ loadItem, updateOrders }) => {
     is_favorited,
     is_in_shopping_cart
   } = recipe
-  
+
+  // Until the recipe arrives, its author, flags and image are unknown:
+  // the buttons would act on an undefined author and an empty state.
+  if (loading) {
+    return <Main />
+  }
+
   return <Main>
     <Container>
       <MetaTags>
