@@ -159,6 +159,21 @@ On every push and pull request GitHub Actions installs the dependencies with
 `pyproject.toml`), runs flake8, checks that the migrations match the models,
 and runs the tests against PostgreSQL.
 
+The frontend has tests written with Jest and React Testing Library. They
+render the app with a mocked API: the recipe list, and the recipe page that
+offers the subscription only after the recipe has loaded. Run them from
+`frontend/` with Node 24 and yarn 1:
+
+```bash
+cd frontend
+yarn install --frozen-lockfile
+CI=true yarn test
+```
+
+Without `CI=true`, `yarn test` keeps watching the files. GitHub Actions runs
+the frontend tests in a separate job on every push and pull request, and
+the Docker images are built only after both test jobs pass.
+
 ## Deployment
 
 The project is prepared for deployment with Docker Compose, Nginx, Gunicorn,
