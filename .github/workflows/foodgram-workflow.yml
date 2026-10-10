@@ -110,6 +110,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: build_and_push_to_docker_hub
     if: github.ref == 'refs/heads/main'
+    # The deploys are listed under Environments; protection rules and
+    # environment secrets can be added there.
+    environment: production
     # Two deploys never run on the server at the same time.
     concurrency:
       group: deploy
