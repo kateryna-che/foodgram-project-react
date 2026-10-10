@@ -2,11 +2,20 @@
 # network the same no matter which directory the stack is started from.
 name: foodgram
 
+# json-file logs grow without a limit by default; each container keeps at
+# most three 10 MB files.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
 services:
 
   db:
     image: postgres:16-alpine
     restart: always
+    logging: *logging
     volumes:
       - db_data:/var/lib/postgresql/data/
     # Only the variables PostgreSQL needs: the database gets no Django
@@ -30,6 +39,7 @@ services:
     # it to .env. Set it to an older SHA to roll back.
     image: ${FOODGRAM_IMAGE:-absentkai/foodgram}:${FOODGRAM_TAG:-latest}
     restart: always
+    logging: *logging
     volumes:
       - static_value:/app/static/
       - media_value:/app/media/
@@ -41,6 +51,7 @@ services:
 
   frontend:
     image: absentkai/frontend:latest
+    logging: *logging
     volumes:
       - ../frontend/:/app/result_build/
     depends_on:
@@ -48,6 +59,7 @@ services:
 
   nginx:
     image: nginx:1.30-alpine
+    logging: *logging
     ports:
       - "80:80"
     volumes:
