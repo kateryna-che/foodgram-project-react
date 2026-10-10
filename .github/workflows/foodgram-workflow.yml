@@ -93,32 +93,85 @@ jobs:
             ${{ github.ref == 'refs/heads/main' && format('{0}:latest', env.IMAGE) || '' }}
 
   deploy:
+    name: Deploy to the server
     runs-on: ubuntu-latest
     needs: build_and_push_to_docker_hub
     if: github.ref == 'refs/heads/main'
+    # Two deploys never run on the server at the same time.
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
     steps:
-      - name: executing remote ssh commands to deploy
-        uses: appleboy/ssh-action@v1.2.0
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      # The server keeps the files of the deployed commit in the same layout
+      # as the repository: ~/foodgram/infra and ~/foodgram/docs.
+      - name: Copy the compose file, nginx.conf and the API docs
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
+          fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+          source: infra/docker-compose.yml,infra/nginx.conf,docs
+          target: foodgram
+
+      - name: Start the new release
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        # The values reach the script as quoted environment variables instead
+        # of being pasted into its text, so special characters in the secrets
+        # can not break or change the commands.
+        env:
+          DJANGO_KEY: ${{ secrets.DJANGO_KEY }}
+          ALLOWED_HOSTS: ${{ secrets.ALLOWED_HOSTS }}
+          DB_ENGINE: ${{ secrets.DB_ENGINE }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          FOODGRAM_IMAGE: ${{ secrets.DOCKER_USERNAME }}/foodgram
+          FOODGRAM_TAG: ${{ github.sha }}
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
+          passphrase: ${{ secrets.PASSPHRASE }}
+          fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+          envs: DJANGO_KEY,ALLOWED_HOSTS,DB_ENGINE,DB_NAME,POSTGRES_USER,POSTGRES_PASSWORD,DB_HOST,DB_PORT,FOODGRAM_IMAGE,FOODGRAM_TAG
           script: |
-            sudo docker-compose stop
-            sudo docker-compose rm -f web
-            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/foodgram:latest
+            set -eu
+            cd foodgram/infra
+
+            # Only the owner can read the secrets. The values are
+            # single-quoted, so docker compose does not expand $ in them.
+            umask 077
             rm -f .env
-            touch .env
-            echo DJANGO_KEY=${{ secrets.DJANGO_KEY }} >> .env
-            echo ALLOWED_HOSTS="${{ secrets.ALLOWED_HOSTS }}" >> .env
-            echo DB_ENGINE=${{ secrets.DB_ENGINE }} >> .env
-            echo DB_NAME=${{ secrets.DB_NAME }} >> .env
-            echo POSTGRES_USER=${{ secrets.POSTGRES_USER }} >> .env
-            echo POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} >> .env
-            echo DB_HOST=${{ secrets.DB_HOST }} >> .env
-            echo DB_PORT=${{ secrets.DB_PORT }} >> .env
-            sudo docker-compose up -d
+            {
+              printf "DJANGO_KEY='%s'\n" "$DJANGO_KEY"
+              printf "ALLOWED_HOSTS='%s'\n" "$ALLOWED_HOSTS"
+              printf "DB_ENGINE='%s'\n" "$DB_ENGINE"
+              printf "DB_NAME='%s'\n" "$DB_NAME"
+              printf "POSTGRES_USER='%s'\n" "$POSTGRES_USER"
+              printf "POSTGRES_PASSWORD='%s'\n" "$POSTGRES_PASSWORD"
+              printf "DB_HOST='%s'\n" "$DB_HOST"
+              printf "DB_PORT='%s'\n" "$DB_PORT"
+              printf "FOODGRAM_IMAGE='%s'\n" "$FOODGRAM_IMAGE"
+              printf "FOODGRAM_TAG='%s'\n" "$FOODGRAM_TAG"
+            } > .env
+
+            sudo docker compose pull --quiet
+            # Migrations and static files are prepared with the new image
+            # before it gets the traffic: if a step fails, the previous
+            # release keeps running.
+            sudo docker compose run --rm -T web python manage.py migrate --noinput
+            sudo docker compose run --rm -T web python manage.py collectstatic --noinput
+            sudo docker compose up -d
+            # Only dangling layers are removed; the tagged release images
+            # stay for a rollback.
+            sudo docker image prune -f
 
   send_message:
     runs-on: ubuntu-latest
