@@ -7,6 +7,10 @@ on:
   # from the Actions tab, because no server is attached right now.
   workflow_dispatch:
 
+# The jobs only read the repository; the GITHUB_TOKEN gets no other rights.
+permissions:
+  contents: read
+
 jobs:
   tests:
     runs-on: ubuntu-latest
