@@ -116,7 +116,23 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
                     'Нельзя добавить два одинаковых ингредиента в рецепт.'
                 )
             ingredient_ids.add(ingredient['id'])
+        existing = Ingredient.objects.filter(id__in=ingredient_ids).count()
+        if existing != len(ingredient_ids):
+            raise serializers.ValidationError(
+                'Указан несуществующий ингредиент.'
+            )
         return value
+
+    def validate(self, data):
+        # PATCH is a partial update, so DRF does not require these fields,
+        # but the recipe cannot be saved without tags and ingredients.
+        for field, name in (('tags', 'tags'),
+                            ('ingredients_recipe', 'ingredients')):
+            if field not in data:
+                raise serializers.ValidationError(
+                    {name: 'Обязательное поле.'}
+                )
+        return data
 
     @staticmethod
     def create_ingredients(recipe, ingredients):
@@ -192,11 +208,13 @@ class SubscribeListSerializer(UserGetSerializer):
                   'is_subscribed', 'recipes', 'recipes_count')
 
     def get_recipes(self, obj):
-        recipes_limit = self.context.get('recipes_limit', 3)
+        request = self.context.get('request')
+        recipes_limit = (request.query_params.get('recipes_limit')
+                         if request else None)
         queryset = obj.recipes.all()
-        if recipes_limit is not None:
-            queryset = queryset[:recipes_limit]
-        return RecipeGetSerializer(
+        if recipes_limit and recipes_limit.isdigit():
+            queryset = queryset[:int(recipes_limit)]
+        return SmallRecipeSerializer(
             queryset,
             many=True,
             context=self.context

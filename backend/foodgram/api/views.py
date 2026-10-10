@@ -136,6 +136,7 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
 class SubscriptionsListView(generics.ListAPIView):
     serializer_class = SubscribeListSerializer
     pagination_class = CustomPagination
+    permission_classes = (IsAuthenticated,)
 
     def get_queryset(self):
         user = self.request.user
@@ -155,6 +156,7 @@ class SubscriptionsListView(generics.ListAPIView):
 
 class SubscribeView(APIView):
     serializer_class = SubscribeSerializer
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request, id, *args, **kwargs):
         author = get_object_or_404(User, id=id)
@@ -163,7 +165,10 @@ class SubscribeView(APIView):
                                            context={'request': request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(
+            SubscribeListSerializer(author, context={'request': request}).data,
+            status=status.HTTP_201_CREATED
+        )
 
     def delete(self, request, id, *args, **kwargs):
         get_object_or_404(Subscription, user=request.user,
