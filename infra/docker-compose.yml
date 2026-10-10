@@ -2,10 +2,24 @@ services:
 
   db:
     image: postgres:16-alpine
+    restart: always
     volumes:
       - db_data:/var/lib/postgresql/data/
-    env_file:
-      - ./.env
+    # Only the variables PostgreSQL needs: the database gets no Django
+    # secrets and is not recreated when other values in .env change.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Created on the first start of an empty volume.
+      POSTGRES_DB: ${DB_NAME:-postgres}
+    healthcheck:
+      # Checked over TCP: while the entrypoint initializes a new volume,
+      # the temporary server listens only on the Unix socket.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   web:
     image: absentkai/foodgram:latest
@@ -14,7 +28,8 @@ services:
       - static_value:/app/static/
       - media_value:/app/media/
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     env_file:
       - ./.env
 
