@@ -1,3 +1,7 @@
+# A fixed project name keeps the names of the volumes, containers and the
+# network the same no matter which directory the stack is started from.
+name: foodgram
+
 services:
 
   db:
@@ -6,7 +10,7 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data/
     # Only the variables PostgreSQL needs: the database gets no Django
-    # secrets and is not recreated when other values in .env change.
+    # secrets and is not recreated when FOODGRAM_TAG changes in .env.
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
@@ -22,7 +26,9 @@ services:
       start_period: 30s
 
   web:
-    image: absentkai/foodgram:latest
+    # FOODGRAM_TAG is the commit SHA of the release; the deploy job writes
+    # it to .env. Set it to an older SHA to roll back.
+    image: ${FOODGRAM_IMAGE:-absentkai/foodgram}:${FOODGRAM_TAG:-latest}
     restart: always
     volumes:
       - static_value:/app/static/
@@ -51,8 +57,13 @@ services:
       - static_value:/var/html/static/:ro
       - media_value:/var/html/media/:ro
     depends_on:
-      - web
-      - frontend
+      web:
+        condition: service_started
+        # nginx resolves "web" once at startup; restart it when web is
+        # recreated, so it does not keep proxying to the old address.
+        restart: true
+      frontend:
+        condition: service_started
     restart: always
 
 volumes:
