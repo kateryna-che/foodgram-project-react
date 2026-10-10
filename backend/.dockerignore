@@ -4,3 +4,8 @@
 **/.env
 **/db.sqlite3
 foodgram/media
+# Collected by collectstatic at deploy time into the static volume.
+foodgram/static
+# The tests run in CI with the dev dependencies, which are not in the image.
+foodgram/tests
+foodgram/pytest.ini

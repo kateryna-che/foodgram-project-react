@@ -141,3 +141,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Recipe images arrive base64-encoded in the JSON body. The default 2.5 MB
+# rejected photos larger than about 1.8 MB; nginx allows the same 10 MB.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
