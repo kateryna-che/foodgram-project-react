@@ -177,6 +177,23 @@ jobs:
               printf "FOODGRAM_TAG='%s'\n" "$FOODGRAM_TAG"
             } > .env
 
+            # A dump of the database before the migrations of every
+            # release; the 10 newest stay in ~/foodgram/backups. The SSH
+            # user, not root, writes the file.
+            mkdir -p ../backups
+            if [ -n "$(sudo docker compose ps --status running --quiet db)" ]; then
+              # shellcheck disable=SC2024
+              sudo docker compose exec -T db sh -c \
+                'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' \
+                > "../backups/foodgram-$(date -u +%Y%m%d-%H%M%S).dump"
+              # The names sort by date, oldest first.
+              set -- ../backups/foodgram-*.dump
+              while [ "$#" -gt 10 ]; do
+                rm -- "$1"
+                shift
+              done
+            fi
+
             sudo docker compose pull --quiet
             # Migrations and static files are prepared with the new image
             # before it gets the traffic: if a step fails, the previous
