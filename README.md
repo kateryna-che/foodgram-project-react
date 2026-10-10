@@ -164,10 +164,22 @@ and runs the tests against PostgreSQL.
 The project is prepared for deployment with Docker Compose, Nginx, Gunicorn,
 PostgreSQL, and GitHub Actions.
 
-Building the Docker image, deploying and the Telegram notification run only
+Building the Docker images, deploying and the Telegram notification run only
 when the workflow is started by hand from the Actions tab (`workflow_dispatch`),
-after the tests pass. The image is pushed to Docker Hub with the commit SHA as
-its tag; `latest` is moved only by runs on `main`, and only `main` is deployed.
+after the tests pass. The backend and the frontend images are pushed to Docker
+Hub with the commit SHA as their tag; `latest` is moved only by runs on `main`,
+and only `main` is deployed. The deploy job runs in the `production` GitHub
+environment, where protection rules such as required reviewers and
+environment secrets can be added.
+
+The frontend image is built in two stages: Node 16 (the newest version
+`react-scripts` 4 builds on) installs the dependencies from `yarn.lock` with
+`--frozen-lockfile` and builds the app, and the final image holds only the
+built files on `busybox`. When the stack starts, the frontend container copies
+them to `../frontend/build`, which nginx serves.
+
+The actions in the workflow are pinned to commit SHAs. Dependabot opens one
+pull request a month that moves them to new releases.
 
 ### Server requirements
 
@@ -221,14 +233,31 @@ other special characters, but not a single quote (`'`).
 
 1. Copies the compose file, `nginx.conf` and the API docs to `~/foodgram/`.
 2. Writes `.env` with the secrets and `FOODGRAM_TAG`, the SHA of the deployed
-   commit, which selects the backend image.
-3. Pulls the images.
-4. Runs `migrate` and `collectstatic` in one-off containers of the new image.
+   commit, which selects the backend and the frontend images.
+3. Dumps the database to `~/foodgram/backups/` if it is running. The 10
+   newest dumps are kept.
+4. Pulls the images.
+5. Runs `migrate` and `collectstatic` in one-off containers of the new image.
    If either fails, the job stops and the previous release keeps running.
-5. Starts the new release with `docker compose up -d`; nginx is restarted
-   together with the backend container.
-6. Removes dangling images. The tagged images of earlier releases stay on the
-   server for a rollback.
+6. Starts the new release with `docker compose up -d`; nginx is restarted
+   together with the backend container. The job then waits for the backend
+   healthcheck and fails if the backend does not become healthy within two
+   minutes.
+7. Keeps the 5 newest backend and frontend images for a rollback and removes
+   older ones and dangling layers.
+
+The Telegram message reports both a successful deploy and a failed run on
+`main`, with a link to the run.
+
+### Runtime settings
+
+- gunicorn starts `WEB_CONCURRENCY` workers, 3 by default in the image. For
+  a local run the number can be changed in `infra/.env`.
+- nginx and Django accept request bodies up to 10 MB. Recipe images are sent
+  base64-encoded inside the JSON body, a third larger than the file.
+- Every container keeps at most three 10 MB log files
+  (`docker compose logs` reads them).
+- `docker compose ps` shows the health of `db` and `web`.
 
 ### Rolling back
 
@@ -242,14 +271,33 @@ sudo docker compose exec web python manage.py migrate <app> <previous-migration>
 ```
 
 Then set `FOODGRAM_TAG` in `.env` to the SHA of the earlier commit and
-recreate the backend container:
+recreate the backend and frontend containers:
 
 ```bash
 sed -i "s/^FOODGRAM_TAG=.*/FOODGRAM_TAG='<commit-sha>'/" .env
 sudo docker compose up -d
+sudo docker compose up -d --wait web
 ```
 
 The next deploy writes the tag of the deployed commit to `.env` again.
+
+If the migrations can not be reverted, restore the dump that the deploy took
+before them. This replaces the whole database. `POSTGRES_USER` and `DB_NAME`
+are the values from `.env`:
+
+```bash
+cd ~/foodgram/infra
+ls -1 ../backups/
+sudo docker compose down
+sudo docker volume rm foodgram_db_data
+sudo docker compose up -d --wait db
+sudo docker compose exec -T db pg_restore -U "$POSTGRES_USER" -d "$DB_NAME" \
+  --no-owner --single-transaction < ../backups/foodgram-<date>.dump
+sudo docker compose up -d
+```
+
+The dumps are stored on the same server, so they protect against a bad
+release, not against losing the server; copy them elsewhere for that.
 
 ### Moving an existing server to this setup
 
