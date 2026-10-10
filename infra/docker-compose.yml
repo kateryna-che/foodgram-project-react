@@ -48,6 +48,14 @@ services:
         condition: service_healthy
     env_file:
       - ./.env
+    healthcheck:
+      # Any answer below 500 means gunicorn and Django are up. A Host that
+      # is not in ALLOWED_HOSTS gets 400 before the database is queried.
+      test: ["CMD", "python", "-c", "import http.client; c = http.client.HTTPConnection('127.0.0.1', 8000, timeout=5); c.request('GET', '/api/tags/'); raise SystemExit(c.getresponse().status >= 500)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   frontend:
     image: absentkai/frontend:latest

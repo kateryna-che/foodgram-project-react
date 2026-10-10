@@ -173,6 +173,9 @@ jobs:
             sudo docker compose run --rm -T web python manage.py migrate --noinput
             sudo docker compose run --rm -T web python manage.py collectstatic --noinput
             sudo docker compose up -d
+            # The job fails if the new backend does not become healthy.
+            sudo docker compose up -d --wait --wait-timeout 120 web
+
             # Only dangling layers are removed; the tagged release images
             # stay for a rollback.
             sudo docker image prune -f
