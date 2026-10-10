@@ -32,8 +32,10 @@ WORKDIR /app
 # the app user.
 COPY --from=builder /app/.venv /app/.venv
 
+# gunicorn starts WEB_CONCURRENCY workers; .env can override the number.
 ENV PATH="/app/.venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    WEB_CONCURRENCY=3
 
 COPY foodgram/ .
 
