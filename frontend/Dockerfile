@@ -1,7 +1,6 @@
-# Build stage. react-scripts 4.0.2 builds on Node 16 at most: on newer
-# versions its postcss fails with ERR_PACKAGE_PATH_NOT_EXPORTED. Node and
-# node_modules stay in this stage and do not reach the final image.
-FROM node:16-alpine AS build
+# Build stage on the current Node LTS. Node and node_modules stay in this
+# stage and do not reach the final image.
+FROM node:24-alpine AS build
 WORKDIR /app
 # yarn.lock is the lockfile that matches package.json; --frozen-lockfile
 # fails the build instead of resolving other versions.

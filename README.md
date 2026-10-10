@@ -172,11 +172,11 @@ and only `main` is deployed. The deploy job runs in the `production` GitHub
 environment, where protection rules such as required reviewers and
 environment secrets can be added.
 
-The frontend image is built in two stages: Node 16 (the newest version
-`react-scripts` 4 builds on) installs the dependencies from `yarn.lock` with
-`--frozen-lockfile` and builds the app, and the final image holds only the
-built files on `busybox`. When the stack starts, the frontend container copies
-them to `../frontend/build`, which nginx serves.
+The frontend image is built in two stages: Node 24 LTS installs the
+dependencies from `yarn.lock` with `--frozen-lockfile` and builds the app with
+`react-scripts` 5, and the final image holds only the built files on
+`busybox`. When the stack starts, the frontend container copies them to
+`../frontend/build`, which nginx serves.
 
 The actions in the workflow are pinned to commit SHAs. Dependabot opens one
 pull request a month that moves them to new releases.
