@@ -7,6 +7,10 @@ on:
   # from the Actions tab, because no server is attached right now.
   workflow_dispatch:
 
+# The jobs only read the repository; the GITHUB_TOKEN gets no other rights.
+permissions:
+  contents: read
+
 jobs:
   tests:
     runs-on: ubuntu-latest
@@ -36,10 +40,10 @@ jobs:
       DB_PORT: 5432
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10.2.0
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           version: '0.12.19'
           python-version: '3.14'
@@ -64,67 +68,168 @@ jobs:
         run: uv run --locked pytest
 
   build_and_push_to_docker_hub:
-    name: Push Docker image to Docker Hub
+    name: Push Docker images to Docker Hub
     runs-on: ubuntu-latest
     needs: tests
     if: github.event_name == 'workflow_dispatch'
+    env:
+      BACKEND_IMAGE: ${{ secrets.DOCKER_USERNAME }}/foodgram
+      FRONTEND_IMAGE: ${{ secrets.DOCKER_USERNAME }}/frontend
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
       - name: Login to Docker
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Push to Docker Hub
-        uses: docker/build-push-action@v6
+      # Every image is tagged with its commit SHA, so the server can be
+      # rolled back to any release. latest moves only on main, where the
+      # deploys come from.
+      - name: Push the backend image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: backend
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/foodgram:latest
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}:latest', env.BACKEND_IMAGE) || '' }}
+      - name: Push the frontend image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: frontend
+          push: true
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}:latest', env.FRONTEND_IMAGE) || '' }}
 
   deploy:
+    name: Deploy to the server
     runs-on: ubuntu-latest
     needs: build_and_push_to_docker_hub
     if: github.ref == 'refs/heads/main'
+    # The deploys are listed under Environments; protection rules and
+    # environment secrets can be added there.
+    environment: production
+    # Two deploys never run on the server at the same time.
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
     steps:
-      - name: executing remote ssh commands to deploy
-        uses: appleboy/ssh-action@v1.2.0
+      - name: Check out the repo
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # The server keeps the files of the deployed commit in the same layout
+      # as the repository: ~/foodgram/infra and ~/foodgram/docs.
+      - name: Copy the compose file, nginx.conf and the API docs
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
+          fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+          source: infra/docker-compose.yml,infra/nginx.conf,docs
+          target: foodgram
+
+      - name: Start the new release
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        # The values reach the script as quoted environment variables instead
+        # of being pasted into its text, so special characters in the secrets
+        # can not break or change the commands.
+        env:
+          DJANGO_KEY: ${{ secrets.DJANGO_KEY }}
+          ALLOWED_HOSTS: ${{ secrets.ALLOWED_HOSTS }}
+          DB_ENGINE: ${{ secrets.DB_ENGINE }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          FOODGRAM_IMAGE: ${{ secrets.DOCKER_USERNAME }}/foodgram
+          FRONTEND_IMAGE: ${{ secrets.DOCKER_USERNAME }}/frontend
+          FOODGRAM_TAG: ${{ github.sha }}
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
+          passphrase: ${{ secrets.PASSPHRASE }}
+          fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+          envs: DJANGO_KEY,ALLOWED_HOSTS,DB_ENGINE,DB_NAME,POSTGRES_USER,POSTGRES_PASSWORD,DB_HOST,DB_PORT,FOODGRAM_IMAGE,FRONTEND_IMAGE,FOODGRAM_TAG
           script: |
-            sudo docker-compose stop
-            sudo docker-compose rm -f web
-            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/foodgram:latest
+            set -eu
+            cd foodgram/infra
+
+            # Only the owner can read the secrets. The values are
+            # single-quoted, so docker compose does not expand $ in them.
+            umask 077
             rm -f .env
-            touch .env
-            echo DJANGO_KEY=${{ secrets.DJANGO_KEY }} >> .env
-            echo ALLOWED_HOSTS="${{ secrets.ALLOWED_HOSTS }}" >> .env
-            echo DB_ENGINE=${{ secrets.DB_ENGINE }} >> .env
-            echo DB_NAME=${{ secrets.DB_NAME }} >> .env
-            echo POSTGRES_USER=${{ secrets.POSTGRES_USER }} >> .env
-            echo POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} >> .env
-            echo DB_HOST=${{ secrets.DB_HOST }} >> .env
-            echo DB_PORT=${{ secrets.DB_PORT }} >> .env
-            sudo docker-compose up -d
+            {
+              printf "DJANGO_KEY='%s'\n" "$DJANGO_KEY"
+              printf "ALLOWED_HOSTS='%s'\n" "$ALLOWED_HOSTS"
+              printf "DB_ENGINE='%s'\n" "$DB_ENGINE"
+              printf "DB_NAME='%s'\n" "$DB_NAME"
+              printf "POSTGRES_USER='%s'\n" "$POSTGRES_USER"
+              printf "POSTGRES_PASSWORD='%s'\n" "$POSTGRES_PASSWORD"
+              printf "DB_HOST='%s'\n" "$DB_HOST"
+              printf "DB_PORT='%s'\n" "$DB_PORT"
+              printf "FOODGRAM_IMAGE='%s'\n" "$FOODGRAM_IMAGE"
+              printf "FRONTEND_IMAGE='%s'\n" "$FRONTEND_IMAGE"
+              printf "FOODGRAM_TAG='%s'\n" "$FOODGRAM_TAG"
+            } > .env
+
+            # A dump of the database before the migrations of every
+            # release; the 10 newest stay in ~/foodgram/backups. The SSH
+            # user, not root, writes the file.
+            mkdir -p ../backups
+            if [ -n "$(sudo docker compose ps --status running --quiet db)" ]; then
+              # shellcheck disable=SC2024
+              sudo docker compose exec -T db sh -c \
+                'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' \
+                > "../backups/foodgram-$(date -u +%Y%m%d-%H%M%S).dump"
+              # The names sort by date, oldest first.
+              set -- ../backups/foodgram-*.dump
+              while [ "$#" -gt 10 ]; do
+                rm -- "$1"
+                shift
+              done
+            fi
+
+            sudo docker compose pull --quiet
+            # Migrations and static files are prepared with the new image
+            # before it gets the traffic: if a step fails, the previous
+            # release keeps running.
+            sudo docker compose run --rm -T web python manage.py migrate --noinput
+            sudo docker compose run --rm -T web python manage.py collectstatic --noinput
+            sudo docker compose up -d
+            # The job fails if the new backend does not become healthy.
+            sudo docker compose up -d --wait --wait-timeout 120 web
+
+            # The 5 newest images of the backend and the frontend stay for
+            # a rollback; older ones and dangling layers are removed.
+            for image in "$FOODGRAM_IMAGE" "$FRONTEND_IMAGE"; do
+              sudo docker image ls "$image" --format '{{.Repository}}:{{.Tag}}' \
+                | tail -n +6 | xargs -r sudo docker image rm || true
+            done
+            sudo docker image prune -f
 
   send_message:
     runs-on: ubuntu-latest
-    needs: deploy
+    needs: [build_and_push_to_docker_hub, deploy]
+    # Reports a failed run on main as well as a successful deploy.
+    if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
     steps:
       - name: send message
-        uses: appleboy/telegram-action@master
+        uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1 # v1.1.1
         with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
-          message: ${{ github.workflow }} успешно выполнен!
-                  Автор коммита - ${{ github.actor }}.
-                  Ветка - ${{ github.ref }}.
-                  Сообщение - "${{ github.event.commits[0].message }}".
-                  Ссылка на коммит -
-                  https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+          message: |
+            ${{ github.workflow }}: ${{ needs.deploy.result == 'success' && 'деплой успешно выполнен!' || 'деплой НЕ выполнен.' }}
+            Запустил - ${{ github.actor }}.
+            Ветка - ${{ github.ref_name }}.
+            Образ - foodgram:${{ github.sha }}.
+            Ссылка на коммит - https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+            Запуск - https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

@@ -1,43 +1,90 @@
+# A fixed project name keeps the names of the volumes, containers and the
+# network the same no matter which directory the stack is started from.
+name: foodgram
+
+# json-file logs grow without a limit by default; each container keeps at
+# most three 10 MB files.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
 services:
 
   db:
     image: postgres:16-alpine
+    restart: always
+    logging: *logging
     volumes:
       - db_data:/var/lib/postgresql/data/
-    env_file:
-      - ./.env
+    # Only the variables PostgreSQL needs: the database gets no Django
+    # secrets and is not recreated when FOODGRAM_TAG changes in .env.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Created on the first start of an empty volume.
+      POSTGRES_DB: ${DB_NAME:-postgres}
+    healthcheck:
+      # Checked over TCP: while the entrypoint initializes a new volume,
+      # the temporary server listens only on the Unix socket.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   web:
-    image: absentkai/foodgram:latest
+    # FOODGRAM_TAG is the commit SHA of the release; the deploy job writes
+    # it to .env. Set it to an older SHA to roll back.
+    image: ${FOODGRAM_IMAGE:-absentkai/foodgram}:${FOODGRAM_TAG:-latest}
     restart: always
+    logging: *logging
     volumes:
       - static_value:/app/static/
       - media_value:/app/media/
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     env_file:
       - ./.env
+    healthcheck:
+      # Any answer below 500 means gunicorn and Django are up. A Host that
+      # is not in ALLOWED_HOSTS gets 400 before the database is queried.
+      test: ["CMD", "python", "-c", "import http.client; c = http.client.HTTPConnection('127.0.0.1', 8000, timeout=5); c.request('GET', '/api/tags/'); raise SystemExit(c.getresponse().status >= 500)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   frontend:
-    image: absentkai/frontend:latest
+    # Built from the same commit as the backend image.
+    image: ${FRONTEND_IMAGE:-absentkai/frontend}:${FOODGRAM_TAG:-latest}
+    logging: *logging
     volumes:
       - ../frontend/:/app/result_build/
     depends_on:
       - web
 
   nginx:
-    image: nginx:1.21.3-alpine
+    image: nginx:1.30-alpine
+    logging: *logging
     ports:
       - "80:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-      - ../frontend/build:/usr/share/nginx/html/
-      - ./docs/:/usr/share/nginx/html/api/docs/
-      - static_value:/var/html/static/
-      - media_value:/var/html/media/
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../frontend/build:/usr/share/nginx/html/:ro
+      - ../docs/:/var/html/api/docs/:ro
+      - static_value:/var/html/static/:ro
+      - media_value:/var/html/media/:ro
     depends_on:
-      - web
-      - frontend
+      web:
+        condition: service_started
+        # nginx resolves "web" once at startup; restart it when web is
+        # recreated, so it does not keep proxying to the old address.
+        restart: true
+      frontend:
+        condition: service_started
     restart: always
 
 volumes:
