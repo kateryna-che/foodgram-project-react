@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import Exists, F, OuterRef, Prefetch, Sum
+from django.db.models import Count, Exists, F, OuterRef, Prefetch, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -37,6 +37,28 @@ def annotate_is_subscribed(queryset, user):
     return queryset.annotate(
         is_subscribed=models.Value(False, output_field=models.BooleanField())
     )
+
+
+def annotate_subscriptions(queryset, request):
+    """Add the fields of SubscribeListSerializer to the authors.
+
+    The recipes of all the authors are loaded with one query; recipes_limit
+    is applied in that query, per author, so no more recipes are loaded
+    than the response shows. A sliced prefetch needs to_attr: Django can not
+    keep it as the cache of author.recipes.
+    """
+    recipes = Recipe.objects.all()
+    recipes_limit = request.query_params.get('recipes_limit')
+    if recipes_limit and recipes_limit.isdigit():
+        recipes = recipes[:int(recipes_limit)]
+    queryset = annotate_is_subscribed(queryset, request.user).annotate(
+        recipes_count=Count('recipes', distinct=True)
+    ).prefetch_related(
+        Prefetch('recipes', queryset=recipes, to_attr='limited_recipes')
+    )
+    # Django does not apply Meta.ordering to a query with GROUP BY, which
+    # Count adds, so the authors are ordered explicitly.
+    return queryset.order_by(*User._meta.ordering)
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
@@ -173,7 +195,9 @@ class SubscriptionsListView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        return User.objects.filter(following__user=user)
+        return annotate_subscriptions(
+            User.objects.filter(following__user=user), self.request
+        )
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -198,6 +222,11 @@ class SubscribeView(APIView):
                                            context={'request': request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        # Loaded again after the subscription is saved, so that
+        # is_subscribed is true.
+        author = annotate_subscriptions(
+            User.objects.all(), request
+        ).get(pk=author.pk)
         return Response(
             SubscribeListSerializer(author, context={'request': request}).data,
             status=status.HTTP_201_CREATED

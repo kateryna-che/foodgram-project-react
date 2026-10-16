@@ -1,7 +1,7 @@
 import pytest
 from rest_framework import status
 
-from factories import make_recipe
+from factories import make_recipe, make_user
 from users.models import Subscription
 
 pytestmark = pytest.mark.django_db
@@ -89,6 +89,17 @@ def test_subscriptions_list(user_client, user, another_user, tag, flour):
     assert len(author['recipes']) == 2
     assert set(author['recipes'][0]) == {'id', 'name', 'image',
                                          'cooking_time'}
+
+
+def test_subscriptions_list_is_ordered_by_username(user_client, user):
+    # Subscribed in the order opposite to the expected one.
+    for username in ('alpha', 'beta', 'gamma'):
+        Subscription.objects.create(user=user, author=make_user(username))
+
+    response = user_client.get(SUBSCRIPTIONS_URL)
+
+    usernames = [item['username'] for item in response.json()['results']]
+    assert usernames == ['gamma', 'beta', 'alpha']
 
 
 def test_subscriptions_list_requires_authentication(anon_client):

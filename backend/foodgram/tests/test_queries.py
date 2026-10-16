@@ -14,8 +14,10 @@ from users.models import Subscription
 pytestmark = pytest.mark.django_db
 
 RECIPES_URL = '/api/recipes/'
+SUBSCRIPTIONS_URL = '/api/users/subscriptions/'
 
 RECIPES_PER_AUTHOR = 3
+RECIPES_LIMIT = 2
 PAGE_SIZE = 6
 
 # The tag choices of RecipeFilter, the count for the pagination, the page
@@ -24,6 +26,8 @@ RECIPES_LIST_QUERIES = 6
 # The tag choices of RecipeFilter, the recipe, its author, tags and
 # ingredients.
 RECIPE_DETAIL_QUERIES = 5
+# The count for the pagination, the page of authors and their recipes.
+SUBSCRIPTIONS_QUERIES = 3
 
 
 @pytest.fixture(params=[1, 3], ids=['1 author', '3 authors'])
@@ -87,3 +91,18 @@ def test_recipe_detail(user_client, authors, size,
     assert len(data['tags']) == size
     assert len(data['ingredients']) == size
     assert data['author']['is_subscribed'] is True
+
+
+def test_subscriptions_list(user_client, authors, size,
+                            django_assert_num_queries):
+    with django_assert_num_queries(SUBSCRIPTIONS_QUERIES):
+        response = user_client.get(SUBSCRIPTIONS_URL,
+                                   {'recipes_limit': RECIPES_LIMIT})
+
+    assert response.status_code == status.HTTP_200_OK
+    results = response.json()['results']
+    assert len(results) == size
+    for item in results:
+        assert item['is_subscribed'] is True
+        assert item['recipes_count'] == RECIPES_PER_AUTHOR
+        assert len(item['recipes']) == RECIPES_LIMIT
