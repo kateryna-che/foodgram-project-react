@@ -136,7 +136,9 @@ The API is covered by tests written with pytest, pytest-django and the DRF
 test client: registration and token login, tags and ingredient search,
 creating, editing and deleting recipes with their validation and access
 rules, filters, favorites, the shopping cart and its download, and
-subscriptions.
+subscriptions. `tests/test_queries.py` checks that the lists of recipes,
+users and subscriptions make a fixed number of database queries, however
+many objects they show.
 
 Install the dependencies with uv (see
 [Local development with uv](#local-development-with-uv)) and run the tests

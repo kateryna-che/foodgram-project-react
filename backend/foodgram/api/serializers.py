@@ -17,6 +17,11 @@ class UserGetSerializer(serializers.ModelSerializer):
                   'last_name', 'is_subscribed')
 
     def get_is_subscribed(self, obj):
+        # The views annotate the users of their lists (see
+        # annotate_is_subscribed); a single user loaded otherwise, such as
+        # the current one in /api/users/me/, is checked with a query.
+        if hasattr(obj, 'is_subscribed'):
+            return obj.is_subscribed
         request = self.context.get('request')
         return (request and request.user.is_authenticated
                 and obj.following.filter(user=request.user).exists())
@@ -200,25 +205,18 @@ class SubscribeSerializer(serializers.ModelSerializer):
 
 
 class SubscribeListSerializer(UserGetSerializer):
-    recipes = serializers.SerializerMethodField()
-    recipes_count = serializers.IntegerField(source='recipes.count')
+    """An author with their recipes.
+
+    The authors come from annotate_subscriptions in the views: it annotates
+    recipes_count and prefetches the recipes cut to recipes_limit.
+    """
+    recipes = SmallRecipeSerializer(many=True, read_only=True,
+                                    source='limited_recipes')
+    recipes_count = serializers.IntegerField(read_only=True)
 
     class Meta(UserGetSerializer.Meta):
         fields = ('email', 'id', 'username', 'first_name', 'last_name',
                   'is_subscribed', 'recipes', 'recipes_count')
-
-    def get_recipes(self, obj):
-        request = self.context.get('request')
-        recipes_limit = (request.query_params.get('recipes_limit')
-                         if request else None)
-        queryset = obj.recipes.all()
-        if recipes_limit and recipes_limit.isdigit():
-            queryset = queryset[:int(recipes_limit)]
-        return SmallRecipeSerializer(
-            queryset,
-            many=True,
-            context=self.context
-        ).data
 
 
 class BaseRelationshipCreateSerializer(serializers.ModelSerializer):
