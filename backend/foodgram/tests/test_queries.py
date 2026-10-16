@@ -15,6 +15,7 @@ pytestmark = pytest.mark.django_db
 
 RECIPES_URL = '/api/recipes/'
 SUBSCRIPTIONS_URL = '/api/users/subscriptions/'
+USERS_URL = '/api/users/'
 
 RECIPES_PER_AUTHOR = 3
 RECIPES_LIMIT = 2
@@ -28,6 +29,8 @@ RECIPES_LIST_QUERIES = 6
 RECIPE_DETAIL_QUERIES = 5
 # The count for the pagination, the page of authors and their recipes.
 SUBSCRIPTIONS_QUERIES = 3
+# The users; the list is not paginated.
+USERS_QUERIES = 1
 
 
 @pytest.fixture(params=[1, 3], ids=['1 author', '3 authors'])
@@ -106,3 +109,14 @@ def test_subscriptions_list(user_client, authors, size,
         assert item['is_subscribed'] is True
         assert item['recipes_count'] == RECIPES_PER_AUTHOR
         assert len(item['recipes']) == RECIPES_LIMIT
+
+
+def test_users_list(user_client, authors, size, django_assert_num_queries):
+    with django_assert_num_queries(USERS_QUERIES):
+        response = user_client.get(USERS_URL)
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    # The user and the authors.
+    assert len(data) == size + 1
+    assert sum(item['is_subscribed'] for item in data) == size

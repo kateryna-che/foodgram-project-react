@@ -3,6 +3,7 @@ from django.db.models import Count, Exists, F, OuterRef, Prefetch, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
+from djoser.views import UserViewSet as DjoserUserViewSet
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -59,6 +60,13 @@ def annotate_subscriptions(queryset, request):
     # Django does not apply Meta.ordering to a query with GROUP BY, which
     # Count adds, so the authors are ordered explicitly.
     return queryset.order_by(*User._meta.ordering)
+
+
+class UserViewSet(DjoserUserViewSet):
+
+    def get_queryset(self):
+        return annotate_is_subscribed(super().get_queryset(),
+                                      self.request.user)
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
