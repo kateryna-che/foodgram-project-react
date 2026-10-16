@@ -18,6 +18,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.7.0",
     "pytest>=9.1.1",
     "pytest-django>=4.14.0",
     "ruff>=0.17.1",
@@ -31,7 +32,7 @@ line-length = 79
 src = ["foodgram", "foodgram/tests"]
 # Django generates the migrations. flake8 also excluded frontend/, but
 # this config applies only to the files under backend/, so the frontend
-# stays out because CI lints only backend/.
+# stays out because CI and the pre-commit hook lint only backend/.
 extend-exclude = ["migrations"]
 
 [tool.ruff.lint]
