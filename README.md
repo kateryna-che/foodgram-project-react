@@ -95,7 +95,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 Create the virtual environment in `backend/.venv` and install the runtime
-dependencies together with the `dev` group (flake8, pytest, pytest-django).
+dependencies together with the `dev` group (ruff, pytest, pytest-django).
 If Python 3.14 is not installed, uv downloads it:
 
 ```bash
@@ -140,14 +140,15 @@ subscriptions.
 
 Install the dependencies with uv (see
 [Local development with uv](#local-development-with-uv)) and run the tests
-and flake8 from `backend/foodgram`:
+and ruff from `backend/foodgram` (`ruff check --fix` fixes what it can, such
+as the order of the imports):
 
 ```bash
 cd backend
 uv sync
 cd foodgram
 uv run pytest
-uv run flake8
+uv run ruff check
 ```
 
 The tests need the same environment variables as the project (see the
@@ -156,7 +157,7 @@ of PostgreSQL.
 
 On every push and pull request GitHub Actions installs the dependencies with
 `uv sync --locked` (the job fails if `uv.lock` is out of date with
-`pyproject.toml`), runs flake8, checks that the migrations match the models,
+`pyproject.toml`), runs ruff, checks that the migrations match the models,
 and runs the tests against PostgreSQL.
 
 The frontend has tests written with Jest and React Testing Library. They

@@ -18,7 +18,30 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "flake8>=7.4.1",
     "pytest>=9.1.1",
     "pytest-django>=4.14.0",
+    "ruff>=0.17.1",
 ]
+
+[tool.ruff]
+# The flake8 limit: its default line length was never changed.
+line-length = 79
+# The Django project is in foodgram/, and the tests import factories from
+# foodgram/tests; isort sorts both as first-party.
+src = ["foodgram", "foodgram/tests"]
+# Django generates the migrations. flake8 also excluded frontend/, but
+# this config applies only to the files under backend/, so the frontend
+# stays out because CI lints only backend/.
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+# E, W, F and C90 are the pycodestyle, pyflakes and mccabe checks that
+# flake8 ran; I, B, UP and DJ are new.
+select = ["E", "W", "F", "C90", "I", "B", "UP", "DJ"]
+
+[tool.ruff.lint.per-file-ignores]
+# The names in AUTH_PASSWORD_VALIDATORS do not fit into a line.
+"**/settings.py" = ["E501"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
