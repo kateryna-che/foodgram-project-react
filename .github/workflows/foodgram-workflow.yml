@@ -56,8 +56,10 @@ jobs:
         working-directory: backend
         run: uv sync --locked
 
-      - name: Lint with flake8
-        run: uv run --project backend --locked flake8
+      # The ruff config is in backend/pyproject.toml.
+      - name: Lint with ruff
+        working-directory: backend
+        run: uv run --locked ruff check
 
       - name: Check that migrations are up to date
         working-directory: backend/foodgram

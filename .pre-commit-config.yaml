@@ -1,0 +1,24 @@
+# Enable the hooks with `uv run pre-commit install` from backend/ (see the
+# README); they then run on the files of every commit.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # 69 frontend files lack the final newline or have trailing
+      # whitespace; the fixers would rewrite them on the first commit
+      # that touches them, so the frontend is left out for now.
+      - id: trailing-whitespace
+        exclude: ^frontend/
+      - id: end-of-file-fixer
+        exclude: ^frontend/
+      - id: check-yaml
+      - id: check-merge-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # The same version as ruff in backend/uv.lock.
+    rev: v0.17.1
+    hooks:
+      - id: ruff-check
+        # The ruff config in backend/pyproject.toml applies only to the
+        # files under backend/, so the frontend is left out here.
+        files: ^backend/

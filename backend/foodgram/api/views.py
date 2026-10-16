@@ -10,17 +10,29 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from recipes.models import (
+    Favorite,
+    Ingredient,
+    IngredientRecipe,
+    Recipe,
+    ShoppingCart,
+    Tag,
+)
+from users.models import Subscription, User
+
 from .filters import IngredientFilter, RecipeFilter
 from .pagination import CustomPagination
 from .permissions import IsAuthorOrReadOnly
-from .serializers import (FavoriteCreateSerializer, IngredientSerializer,
-                          RecipeCreateSerializer, RecipeGetSerializer,
-                          ShoppingCartCreateSerializer,
-                          SubscribeListSerializer,
-                          SubscribeSerializer, TagSerializer)
-from recipes.models import (Favorite, Ingredient, IngredientRecipe, Recipe,
-                            ShoppingCart, Tag)
-from users.models import Subscription, User
+from .serializers import (
+    FavoriteCreateSerializer,
+    IngredientSerializer,
+    RecipeCreateSerializer,
+    RecipeGetSerializer,
+    ShoppingCartCreateSerializer,
+    SubscribeListSerializer,
+    SubscribeSerializer,
+    TagSerializer,
+)
 
 
 def annotate_is_subscribed(queryset, user):
