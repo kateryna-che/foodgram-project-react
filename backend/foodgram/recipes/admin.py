@@ -1,8 +1,15 @@
 from django.contrib import admin
 from django.utils.safestring import mark_safe
 
-from .models import (Favorite, Ingredient, IngredientRecipe, Recipe,
-                     ShoppingCart, Tag, TagRecipe)
+from .models import (
+    Favorite,
+    Ingredient,
+    IngredientRecipe,
+    Recipe,
+    ShoppingCart,
+    Tag,
+    TagRecipe,
+)
 
 
 class IngredientRecipeInline(admin.TabularInline):
