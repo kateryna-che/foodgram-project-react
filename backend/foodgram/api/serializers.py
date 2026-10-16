@@ -17,6 +17,11 @@ class UserGetSerializer(serializers.ModelSerializer):
                   'last_name', 'is_subscribed')
 
     def get_is_subscribed(self, obj):
+        # The views annotate the users of their lists (see
+        # annotate_is_subscribed); a single user loaded otherwise, such as
+        # the current one in /api/users/me/, is checked with a query.
+        if hasattr(obj, 'is_subscribed'):
+            return obj.is_subscribed
         request = self.context.get('request')
         return (request and request.user.is_authenticated
                 and obj.following.filter(user=request.user).exists())

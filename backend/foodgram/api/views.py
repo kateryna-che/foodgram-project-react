@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import Exists, F, OuterRef, Sum
+from django.db.models import Exists, F, OuterRef, Prefetch, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -22,6 +22,23 @@ from recipes.models import (Favorite, Ingredient, IngredientRecipe, Recipe,
 from users.models import Subscription, User
 
 
+def annotate_is_subscribed(queryset, user):
+    """Annotate the users with whether user follows them.
+
+    UserGetSerializer reads the annotation, so a list of users does not
+    make a query per user to check the subscription.
+    """
+    if user.is_authenticated:
+        return queryset.annotate(
+            is_subscribed=Exists(
+                Subscription.objects.filter(author=OuterRef('pk'), user=user)
+            )
+        )
+    return queryset.annotate(
+        is_subscribed=models.Value(False, output_field=models.BooleanField())
+    )
+
+
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     pagination_class = CustomPagination
@@ -31,6 +48,22 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        if self.action in ['list', 'retrieve']:
+            # RecipeGetSerializer shows the author, the tags and the
+            # ingredients of every recipe; each is loaded with one query
+            # for the whole page. The author is prefetched, not joined
+            # with select_related, so that it can carry is_subscribed.
+            # The other actions need only the recipe itself.
+            queryset = queryset.prefetch_related(
+                Prefetch('author', queryset=annotate_is_subscribed(
+                    User.objects.all(), self.request.user
+                )),
+                'tags',
+                Prefetch('ingredients_recipe',
+                         queryset=IngredientRecipe.objects.select_related(
+                             'ingredient'
+                         )),
+            )
         if self.request.user.is_authenticated:
             queryset = queryset.annotate(
                 is_favorited=Exists(
